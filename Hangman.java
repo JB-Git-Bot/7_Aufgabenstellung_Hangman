@@ -41,41 +41,47 @@ public class Hangman extends JFrame {
     private JComboBox<String> maxNumberofAttempts;
     private JTextArea commentatorArea;
 
-    // Root panel from your .form (make sure it’s bound correctly)
+    // Neue Felder für Fehleranzeige
+    private JTextField mistakescount;
+    private JLabel mistakescountLabel;
+
+    // Root panel from your .form
     private JPanel mainPanel;
 
     // -- Game Logic Fields --
-    private final ArrayList<String> wordList = new ArrayList<>(Arrays.asList(
-            "JAVA", "COMPUTER", "PROGRAMMING", "HANGMAN", "KEYBOARD", "OBJECT"
-    ));
-
-    private String solutionWord;       // The word to guess
-    private char[] displayedWord;      // Array for underscores and revealed letters
-    private int mistakes;              // Count of wrong guesses so far
-    private int maxMistakes = 9;       // Default maximum mistakes allowed
+    private final ArrayList<String> wordList = new ArrayList<>();
+    private String solutionWord;
+    private char[] displayedWord;
+    private int mistakes;
+    private int maxMistakes = 9;
     private final HashSet<Character> guessedLetters = new HashSet<>();
 
-    // Hangman images – load 10 images: hangman1.png to hangman10.png
     private final ImageIcon[] hangmanImages = new ImageIcon[10];
 
     public Hangman() {
-        // 1) Load the hangman images.
+        // 1) Hangman-Bilder laden
         loadImages();
 
-        // 2) Make the word text field read-only.
+        // 2) Textfeld word nur lesbar
         word.setEditable(false);
 
-        // 3) Set up the combo box for max attempts.
+        // 3) ComboBox für Versuche einrichten
         setupMaxAttemptsComboBox();
 
-        // 4) Wire up all letter buttons.
+        // 4) Wörter aus Datei laden
+        String filePath = "C:\\Users\\ENTW1\\Desktop\\Schule\\2.Klasse\\INF\\Wordlist.txt";
+        loadWordsFromFile(filePath);
+        if (wordList.isEmpty()) {
+            commentatorArea.setText("Keine Wörter geladen! Verwende Standardwortliste.");
+            wordList.addAll(Arrays.asList("JAVA", "COMPUTER", "PROGRAMMING", "HANGMAN", "KEYBOARD", "OBJECT"));
+        }
+
+        // 5) Buchstaben-Buttons einrichten
         setupLetterButtons();
 
-        // Ensure the checkbox starts unselected and hide the letter history area.
+        // 6) Checkbox für bereits geratene Buchstaben
         showAlreadyWrittenLettersCheckBox.setSelected(false);
         AlreadyWrittenLetters.setVisible(false);
-
-        // 5) Listener for the checkbox to show/hide guessed letters.
         showAlreadyWrittenLettersCheckBox.addActionListener(e -> {
             boolean visible = showAlreadyWrittenLettersCheckBox.isSelected();
             AlreadyWrittenLetters.setVisible(visible);
@@ -83,21 +89,47 @@ public class Hangman extends JFrame {
             mainPanel.repaint();
         });
 
-        // 6) Restart button listener.
+        // 7) Restart-Button
         restartbutton.addActionListener(e -> startNewGame());
 
-        // 7) Hint button listener (reveals one random missing letter).
+        // 8) Hint-Button
         hintButton.addActionListener(e -> giveHint());
 
-        // 8) Start a new game.
+        // 9) Fehler-Anzeige initialisieren
+        mistakescount.setEditable(false);
+        mistakescount.setText("0");
+
+        // 10) Spiel starten
         startNewGame();
     }
 
     /**
-     * Loads 10 hangman images.
-     * Assumes file names "hangman1.png" ... "hangman10.png".
-     * Adjust the file path as necessary.
+     * Nur Werte 1 bis 9 für die ComboBox zulassen, Voreinstellung auf 9.
      */
+    private void setupMaxAttemptsComboBox() {
+        // Nur ausfüllen, wenn noch nichts drin ist
+        if (maxNumberofAttempts.getItemCount() == 0) {
+            for (int i = 1; i <= 9; i++) {
+                maxNumberofAttempts.addItem(String.valueOf(i));
+            }
+            maxNumberofAttempts.setSelectedItem("9");
+        }
+        maxNumberofAttempts.addActionListener(e -> {
+            String selected = (String) maxNumberofAttempts.getSelectedItem();
+            try {
+                int val = Integer.parseInt(selected);
+                // Falls jemand manuell was anderes reinschreibt, clampen wir den Wert
+                if (val < 1) val = 1;
+                if (val > 9) val = 9;
+                maxMistakes = val;
+                commentatorArea.setText("Max attempts set to: " + maxMistakes);
+            } catch (NumberFormatException ex) {
+                commentatorArea.setText("Invalid number for attempts.");
+            }
+        });
+    }
+
+    // Lädt Hangman Bilder ins Array hangmanImages
     private void loadImages() {
         for (int i = 0; i < 10; i++) {
             hangmanImages[i] = new ImageIcon(
@@ -106,35 +138,22 @@ public class Hangman extends JFrame {
         }
     }
 
-    /**
-     * Initializes the combo box for selecting max mistakes.
-     * If no items are in the combo box, adds values "5" through "10".
-     */
-    private void setupMaxAttemptsComboBox() {
-        if (maxNumberofAttempts.getItemCount() == 0) {
-            maxNumberofAttempts.addItem("5");
-            maxNumberofAttempts.addItem("6");
-            maxNumberofAttempts.addItem("7");
-            maxNumberofAttempts.addItem("8");
-            maxNumberofAttempts.addItem("9");
-            maxNumberofAttempts.addItem("10");
-            maxNumberofAttempts.setSelectedItem("9");
-        }
-        // Update maxMistakes when the user selects a new value.
-        maxNumberofAttempts.addActionListener(e -> {
-            String selected = (String) maxNumberofAttempts.getSelectedItem();
-            try {
-                maxMistakes = Integer.parseInt(selected);
-                commentatorArea.setText("Max attempts set to: " + maxMistakes);
-            } catch (NumberFormatException ex) {
-                commentatorArea.setText("Invalid number for attempts.");
+    // Wörter aus der Wordlist.txt werden zur Porgramm-wordlist hinzugefügt
+    private void loadWordsFromFile(String filePath) {
+        wordList.clear();
+        try (Scanner scanner = new Scanner(new File(filePath))) {
+            while (scanner.hasNextLine()) {
+                String line = scanner.nextLine().trim().toUpperCase();
+                if (!line.isEmpty()) {
+                    wordList.add(line);
+                }
             }
-        });
+            commentatorArea.setText("Loaded " + wordList.size() + " words from file.");
+        } catch (FileNotFoundException e) {
+            commentatorArea.setText("File not found: " + filePath);
+        }
     }
 
-    /**
-     * Wires up each letter button so that clicking it calls handleGuess with that letter.
-     */
     private void setupLetterButtons() {
         aButton.addActionListener(e -> handleGuess('A'));
         bButton.addActionListener(e -> handleGuess('B'));
@@ -164,54 +183,53 @@ public class Hangman extends JFrame {
         zButton.addActionListener(e -> handleGuess('Z'));
     }
 
-    /**
-     * Starts or restarts a new game.
-     * It also reads the current max mistakes from the combo box.
-     */
     private void startNewGame() {
-        // Update maxMistakes from the combo box at the start of a new game.
+        // Versuche aus ComboBox lesen
         String selected = (String) maxNumberofAttempts.getSelectedItem();
         try {
-            maxMistakes = Integer.parseInt(selected);
+            int val = Integer.parseInt(selected);
+            if (val < 1) val = 1;
+            if (val > 9) val = 9;
+            maxMistakes = val;
         } catch (NumberFormatException ex) {
             maxMistakes = 9;
         }
 
-        // Choose a random word.
+        // Zufälliges Wort aus der Wordlist nehmen
         Random rand = new Random();
         solutionWord = wordList.get(rand.nextInt(wordList.size())).toUpperCase();
 
-        // Initialize displayedWord with underscores.
+        // displayedWord mit Unterstrichen
         displayedWord = new char[solutionWord.length()];
         for (int i = 0; i < solutionWord.length(); i++) {
             displayedWord[i] = '_';
         }
 
-        // Reset mistakes and guessed letters.
+        // Fehler und geratene Buchstaben zurücksetzen
         mistakes = 0;
         guessedLetters.clear();
         AlreadyWrittenLetters.setText("");
         commentatorArea.setText("New game started. Good luck!");
         hangmanpics.setIcon(null);
 
-        // Re-enable letter buttons.
+        // Fehleranzeige zurücksetzen
+        mistakescount.setText("0");
+
+        // Buttons wieder aktivieren
         enableAllLetterButtons();
 
-        // Update UI.
+        // Anzeige aktualisieren
         updateWordDisplay();
         updateHangmanImage();
     }
 
-    /**
-     * Called when a letter button is clicked.
-     * If a letter is clicked again, it counts as an extra mistake.
-     */
     private void handleGuess(char letter) {
         letter = Character.toUpperCase(letter);
 
-        // If letter was already guessed, count an extra mistake.
+        // Wenn schon geraten, zählt es als Fehler
         if (guessedLetters.contains(letter)) {
             mistakes++;
+            mistakescount.setText(String.valueOf(mistakes));
             commentatorArea.setText("You already guessed: " + letter + ". Mistake counted!");
             updateHangmanImage();
             if (mistakes >= maxMistakes) {
@@ -221,12 +239,11 @@ public class Hangman extends JFrame {
             return;
         }
 
-        // Otherwise, record the guess.
         guessedLetters.add(letter);
         AlreadyWrittenLetters.append(letter + " ");
 
-        // Check if the letter is in the solution.
         boolean found = false;
+        // Iteriert durch solutionWord, ersetzt passende Unterstriche und setzt found auf true
         for (int i = 0; i < solutionWord.length(); i++) {
             if (solutionWord.charAt(i) == letter) {
                 displayedWord[i] = letter;
@@ -234,8 +251,10 @@ public class Hangman extends JFrame {
             }
         }
 
+        // überprüfen des booleans found auf richtiger Versuch oder Falscher
         if (!found) {
             mistakes++;
+            mistakescount.setText(String.valueOf(mistakes));
             commentatorArea.setText("Wrong guess: " + letter);
         } else {
             commentatorArea.setText("Good guess: " + letter);
@@ -244,7 +263,7 @@ public class Hangman extends JFrame {
         updateWordDisplay();
         updateHangmanImage();
 
-        // Check for game over or win.
+        // Sieg oder Niederlagenausgabe in der commentatorarea
         if (mistakes >= maxMistakes) {
             commentatorArea.setText("Game Over! The word was: " + solutionWord);
             disableAllLetterButtons();
@@ -254,9 +273,7 @@ public class Hangman extends JFrame {
         }
     }
 
-    /**
-     * Optional hint: reveal one random missing letter.
-     */
+    // deckt einen zufälligen Unterstrich im Wort auf als Hinweis
     private void giveHint() {
         List<Integer> hiddenIndices = new ArrayList<>();
         for (int i = 0; i < displayedWord.length; i++) {
@@ -274,9 +291,6 @@ public class Hangman extends JFrame {
         handleGuess(letter);
     }
 
-    /**
-     * Updates the word text field to display the current state (underscores and revealed letters).
-     */
     private void updateWordDisplay() {
         StringBuilder sb = new StringBuilder();
         for (char c : displayedWord) {
@@ -285,31 +299,20 @@ public class Hangman extends JFrame {
         word.setText(sb.toString().trim());
     }
 
-    /**
-     * Updates the hangman image based on the number of mistakes.
-     * Mapping: with 10 images available, if maxMistakes = M,
-     * we want the first mistake to show image at index = (10 - M) and the Mth mistake to show hangman10.png (index 9).
-     *
-     * Calculation:
-     *   Let pStart = 10 - M.
-     *   Then for mistake m (1 <= m <= M), use image index = pStart + m - 1.
-     */
     private void updateHangmanImage() {
         if (mistakes == 0) {
             hangmanpics.setIcon(null);
         } else if (mistakes > 0 && mistakes <= maxMistakes) {
-            int pStart = 10 - maxMistakes; // For M=5, pStart = 5.
+            // Startindex = 10 - maxMistakes
+            int pStart = 10 - maxMistakes;
             int imageIndex = pStart + mistakes - 1;
-            // Clamp imageIndex to 0...9.
             if (imageIndex < 0) imageIndex = 0;
             if (imageIndex > 9) imageIndex = 9;
             hangmanpics.setIcon(hangmanImages[imageIndex]);
         }
     }
 
-    /**
-     * Checks if the entire word has been guessed.
-     */
+    // überprüft ob noch Unterstriche vorhanden sind, wenn nicht EQ TRUE (SIEG)
     private boolean isWordGuessed() {
         for (char c : displayedWord) {
             if (c == '_') {
@@ -319,9 +322,7 @@ public class Hangman extends JFrame {
         return true;
     }
 
-    /**
-     * Disables all letter buttons.
-     */
+    // deaktivieren aller Buttons
     private void disableAllLetterButtons() {
         aButton.setEnabled(false);
         bButton.setEnabled(false);
@@ -351,9 +352,7 @@ public class Hangman extends JFrame {
         zButton.setEnabled(false);
     }
 
-    /**
-     * Re-enables all letter buttons.
-     */
+    // aktivieren aller Buttons
     private void enableAllLetterButtons() {
         aButton.setEnabled(true);
         bButton.setEnabled(true);
@@ -383,30 +382,7 @@ public class Hangman extends JFrame {
         zButton.setEnabled(true);
     }
 
-    // -----------------------------------------------------------------------
-    // Teil 2: Loading words from a file (optional)
-    // -----------------------------------------------------------------------
-    /**
-     * Loads words from a text file (one word per line).
-     */
-    private void loadWordsFromFile(String filePath) {
-        wordList.clear();
-        try (Scanner scanner = new Scanner(new File(filePath))) {
-            while (scanner.hasNextLine()) {
-                String line = scanner.nextLine().trim().toUpperCase();
-                if (!line.isEmpty()) {
-                    wordList.add(line);
-                }
-            }
-            commentatorArea.setText("Loaded " + wordList.size() + " words from file.");
-        } catch (FileNotFoundException e) {
-            commentatorArea.setText("File not found: " + filePath);
-        }
-    }
-
-    // -----------------------------------------------------------------------
-    // Main method to run the application.
-    // -----------------------------------------------------------------------
+    // Main-Methode (Start des Programmes)
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             Hangman hangman = new Hangman();
