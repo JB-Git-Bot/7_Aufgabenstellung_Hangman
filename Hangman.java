@@ -1,11 +1,10 @@
 import javax.swing.*;
-import java.awt.event.*;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
 
 public class Hangman extends JFrame {
-    // Fields from your .form
+    // Felder von der Hangman.form
     private JTextField word;
     private JButton aButton;
     private JButton cButton;
@@ -44,9 +43,10 @@ public class Hangman extends JFrame {
     // Neue Felder für Fehleranzeige
     private JTextField mistakescount;
     private JLabel mistakescountLabel;
-
-    // Root panel from your .form
     private JPanel mainPanel;
+
+    // Button um zum nächsten Wort zu springen
+    private JButton naechstesWortButton;
 
     // -- Game Logic Fields --
     private final ArrayList<String> wordList = new ArrayList<>();
@@ -59,16 +59,16 @@ public class Hangman extends JFrame {
     private final ImageIcon[] hangmanImages = new ImageIcon[10];
 
     public Hangman() {
-        // 1) Hangman-Bilder laden
+        // Hangman-Bilder laden
         loadImages();
 
-        // 2) Textfeld word nur lesbar
+        // Textfeld word nur lesbar
         word.setEditable(false);
 
-        // 3) ComboBox für Versuche einrichten
+        // ComboBox für Versuche einrichten
         setupMaxAttemptsComboBox();
 
-        // 4) Wörter aus Datei laden
+        // Wörter aus Datei laden
         String filePath = "C:\\Users\\ENTW1\\Desktop\\Schule\\2.Klasse\\INF\\Wordlist.txt";
         loadWordsFromFile(filePath);
         if (wordList.isEmpty()) {
@@ -76,10 +76,10 @@ public class Hangman extends JFrame {
             wordList.addAll(Arrays.asList("JAVA", "COMPUTER", "PROGRAMMING", "HANGMAN", "KEYBOARD", "OBJECT"));
         }
 
-        // 5) Buchstaben-Buttons einrichten
+        // Buchstaben-Buttons einrichten
         setupLetterButtons();
 
-        // 6) Checkbox für bereits geratene Buchstaben
+        // Checkbox für bereits geratene Buchstaben
         showAlreadyWrittenLettersCheckBox.setSelected(false);
         AlreadyWrittenLetters.setVisible(false);
         showAlreadyWrittenLettersCheckBox.addActionListener(e -> {
@@ -89,18 +89,57 @@ public class Hangman extends JFrame {
             mainPanel.repaint();
         });
 
-        // 7) Restart-Button
+        // Restart-Button
         restartbutton.addActionListener(e -> startNewGame());
 
-        // 8) Hint-Button
+        // Hint-Button
         hintButton.addActionListener(e -> giveHint());
 
-        // 9) Fehler-Anzeige initialisieren
+        // Fehler-Anzeige initialisieren
         mistakescount.setEditable(false);
         mistakescount.setText("0");
 
-        // 10) Spiel starten
+        // Spiel starten
         startNewGame();
+
+        // Nächstes Wort-Button
+        naechstesWortButton.addActionListener(e -> {
+            // Es wird überprüft, ob mehr als ein Wort in der Liste vorhanden ist
+            if (wordList.size() <= 1) {
+                commentatorArea.setText("Es ist nur ein Wort in der Liste vorhanden. Kein nächstes Wort möglich.");
+                return;
+            }
+
+            // Es wird das alte Wort gespeichert
+            String oldWord = solutionWord;
+
+            // Es wird in einer Schleife ein neues Wort gesucht, das nicht dem alten Wort entspricht
+            Random rand = new Random();
+            String newWord = oldWord;
+            while (newWord.equals(oldWord)) {
+                newWord = wordList.get(rand.nextInt(wordList.size())).toUpperCase();
+            }
+            solutionWord = newWord;
+
+            // displayedWord wird neu mit Unterstrichen initialisiert
+            displayedWord = new char[solutionWord.length()];
+            for (int i = 0; i < solutionWord.length(); i++) {
+                displayedWord[i] = '_';
+            }
+
+            // Fehler, geratene Buchstaben und Anzeige werden zurückgesetzt
+            mistakes = 0;
+            guessedLetters.clear();
+            AlreadyWrittenLetters.setText("");
+            commentatorArea.setText("Neues Wort gewählt. Viel Erfolg!");
+            hangmanpics.setIcon(null);
+            mistakescount.setText("0");
+            enableAllLetterButtons();
+
+            // Anzeige wird aktualisiert
+            updateWordDisplay();
+            updateHangmanImage();
+        });
     }
 
     /**
@@ -118,7 +157,6 @@ public class Hangman extends JFrame {
             String selected = (String) maxNumberofAttempts.getSelectedItem();
             try {
                 int val = Integer.parseInt(selected);
-                // Falls jemand manuell was anderes reinschreibt, clampen wir den Wert
                 if (val < 1) val = 1;
                 if (val > 9) val = 9;
                 maxMistakes = val;
